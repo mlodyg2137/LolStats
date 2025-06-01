@@ -1,0 +1,63 @@
+{# templates/stats/summoner_list.html #}
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Baza graczy – LOLStats{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-4">Baza graczy</h1>
+
+{% if page_obj.object_list %}
+  <table class="table table-striped table-hover">
+    <thead>
+      <tr>
+        <th scope="col">Imię i Tag</th>
+        <th scope="col">Region</th>
+        <th scope="col">Data dodania</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in page_obj.object_list %}
+      <tr>
+        <td>
+          <a href="{% url 'summoner_detail' s.gameName s.tagLine %}?region={{ s.region }}">
+            {{ s.gameName }}#{{ s.tagLine }}
+          </a>
+        </td>
+        <td>{{ s.region }}</td>
+        <td>{{ s.date_added|date:"Y-m-d H:i" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Nawigacja paginacji -->
+  <nav aria-label="Nawigacja po stronach">
+    <ul class="pagination">
+      {% if page_obj.has_previous %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Poprzednia</a>
+        </li>
+      {% else %}
+        <li class="page-item disabled"><span class="page-link">Poprzednia</span></li>
+      {% endif %}
+
+      <li class="page-item disabled">
+        <span class="page-link">
+          Strona {{ page_obj.number }} z {{ page_obj.paginator.num_pages }}
+        </span>
+      </li>
+
+      {% if page_obj.has_next %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page_obj.next_page_number }}">Następna</a>
+        </li>
+      {% else %}
+        <li class="page-item disabled"><span class="page-link">Następna</span></li>
+      {% endif %}
+    </ul>
+  </nav>
+{% else %}
+  <p>Brak Summonerów w bazie.</p>
+{% endif %}
+{% endblock %}

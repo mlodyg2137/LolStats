@@ -1,0 +1,95 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Python
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Pythona – pliki/zasoby kompilowane
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtualenv / venv – ignoruj cały katalog środowiska
+venv/
+env/
+.venv/
+ENV/
+
+# Pliki instalacyjne
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Rozszerzenia środowiska wirtualnego w Windows
+Scripts/
+Activate.ps1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Django
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Baza SQLite (jeśli używasz domyślnej db.sqlite3)
+db.sqlite3
+
+# Pliki logów
+*.log
+
+# Lokalny plik settings (np. local_settings.py), w którym trzymasz tajne klucze
+local_settings.py
+*.env
+
+# Mediówka (użytkownik będzie wrzucać tam np. obrazy, więc nie commitujemy)
+media/
+
+# Katalog, w którym Django gromadzi statyczne pliki po `collectstatic`
+staticfiles/
+
+# ─────────────────────────────────────────────────────────────────────────────
+# IDE i edytory
+# ─────────────────────────────────────────────────────────────────────────────
+
+# VSCode
+.vscode/
+
+# PyCharm / IntelliJ
+.idea/
+
+# Sublime
+*.sublime-workspace
+*.sublime-project
+
+# Vim / swap files
+*.swp
+*.swo
+
+# Emacs
+*~
+
+# Systemowe (macOS, Windows)
+.DS_Store
+Thumbs.db
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Inne przydatne
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Archiwa
+*.zip
+*.tar.gz
+*.egg
+*.egg-info/
+dist/
+build/
+
+# .env (jeśli trzymasz konfigurację w pliku .env)
+.env
+
+# Coverage
+htmlcov/
+.coverage
+
+# IDE ruchome (np. Jupyter Notebook checkpointy)
+.ipynb_checkpoints/
+
+# Node.js / frontend (jeśli kiedykolwiek dodasz np. npm czy Yarn)
+node_modules/
+
+# Pliki tymczasowe systemowe
+*.tmp

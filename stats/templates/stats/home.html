@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="mt-5 p-4 bg-white rounded shadow-sm">
+  <h1 class="h3 mb-4">Wyszukaj gracza League of Legends</h1>
+  <form method="post">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="id_name" class="form-label">Nick gracza</label>
+      <input type="text" id="id_name" name="gameName" class="form-control" placeholder="Wprowadź nick" required>
+    </div>
+    <div class="mb-3">
+      <label for="id_tag" class="form-label">Tag gracza</label>
+      <input type="text" id="id_tag" name="tagLine" class="form-control" placeholder="Wprowadź tag" required>
+    </div>
+    <div class="mb-3">
+      <label for="id_region" class="form-label">Region</label>
+      <select id="id_region" name="region" class="form-select">
+        <option value="europe" selected>Europa</option>
+        <option value="americas">Ameryka</option>
+        <option value="asia">Azja</option>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Szukaj</button>
+  </form>
+</div>
+{% endblock %}
