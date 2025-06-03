@@ -5,7 +5,7 @@
 {% block title %}{{ summoner.gameName }}#{{ summoner.tagLine }} – Profil{% endblock %}
 
 {% block content %}
-<!-- 1) Overlay z spinnerem dla “Aktualizuj” -->
+<!-- Overlay z spinnerem dla “Aktualizuj” -->
 <div id="loading-overlay" style="
       display: none;
       position: fixed;
@@ -22,7 +22,7 @@
 </div>
 
 <div class="row">
-  <!-- 2) Panel Profilu Summonera -->
+  <!-- Panel Profilu Summonera -->
   <div class="col-12 mb-4">
     <div class="card shadow-sm">
       <div class="card-body d-flex align-items-center">
@@ -64,7 +64,7 @@
   </div>
 </div>
 
-<!-- 3) Panele Statystyk SoloQ / FlexQ -->
+<!-- Panele Statystyk SoloQ / FlexQ -->
 <div class="row">
   <div class="col-md-6 mb-4">
     <div class="card h-100 shadow-sm">
@@ -99,7 +99,46 @@
   </div>
 </div>
 
-  <!-- 4) Komunikaty błędów/sukcesu z Django messages -->
+<!-- Panel top championow -->
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-header bg-warning text-dark">
+        Top 5 postaci
+      </div>
+      <div class="card-body">
+        {% if top_champs %}
+          <div class="row">
+            {% for sc in top_champs %}
+              <div class="col-md-2 col-sm-4 col-6 mb-3 text-center">
+                <div class="card h-100 border-0">
+                  <!-- Ikona championa -->
+                  <img src="{{ sc.champion.icon }}" alt="{{ sc.champion.name }}"
+                       class="rounded-circle mx-auto d-block"
+                       style="width: 64px; height: 64px;">
+                  <div class="card-body p-2">
+                    <!-- Nazwa championa -->
+                    <h6 class="card-title mb-1">{{ sc.champion.name }}</h6>
+                    <!-- Liczba meczów -->
+                    <p class="mb-1"><small>Mecze: {{ sc.matches_num }}</small></p>
+                    <!-- Winratio -->
+                    <p class="mb-1"><small>Winrate: {{ sc.winratio|floatformat:2 }}%</small></p>
+                    <!-- KDA -->
+                    <p class="mb-0"><small>KDA: {{ sc.kda|floatformat:2 }}</small></p>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="text-muted">Brak wystarczających danych o postaciach.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+  <!-- Komunikaty błędów/sukcesu z Django messages -->
   {% if messages %}
     {% for message in messages %}
       <div class="alert alert-{{ message.tags|default:"danger" }} alert-dismissible fade show" role="alert">

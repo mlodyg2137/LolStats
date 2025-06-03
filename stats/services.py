@@ -1,9 +1,11 @@
 # stats/services.py
 
-from .models import (Match, Participant, Summoner, Champion, Queue)
+from .models import (Match, Participant, Summoner, Champion, Queue, SummonerChampion)
 from .utils import (get_match_ids_by_puuid, get_match_by_id, get_champions, get_queues, get_summoner_info_by_puuid, get_queues_info_by_summoner_id, RateLimitException)
 from django.utils import timezone
 from datetime import datetime
+from collections import defaultdict
+from decimal import Decimal, ROUND_HALF_UP
 
 
 MATCHES_LIMIT = 60
@@ -347,3 +349,63 @@ def save_summoner_rank_info(summ: Summoner) -> None:
     summ.flex_loses = flex_loses
 
     summ.save()
+
+
+def recalculate_summoner_champions(summoner):
+    # 1) Pobranie wszystkich Participant danego Summonera
+    participants = Participant.objects.filter(summoner=summoner).select_related('champion')
+
+    # 2) Grupowanie po champion_id
+    stats = defaultdict(lambda: {
+        'matches': 0,
+        'wins': 0,
+        'kills': 0,
+        'deaths': 0,
+        'assists': 0
+    })
+
+    for p in participants:
+        cid = p.champion_id
+        stats[cid]['matches'] += 1
+        stats[cid]['wins'] += 1 if p.win else 0
+        stats[cid]['kills'] += p.kills
+        stats[cid]['deaths'] += p.deaths
+        stats[cid]['assists'] += p.assists
+
+    # 3) Usuń stare rekordy SummonerChampion dla tego summoner
+    SummonerChampion.objects.filter(summoner=summoner).delete()
+
+    # 4) Dla każdej grupy policz winratio i kda i wstaw nowe rekordy
+    objects_to_create = []
+    for champ_id, vals in stats.items():
+        matches = vals['matches']
+        wins = vals['wins']
+        total_kills = vals['kills']
+        total_deaths = vals['deaths'] if vals['deaths'] > 0 else 0  # liczymy 0 zgonów
+
+        # Winratio w procentach (Decimal)
+        winratio_val = (Decimal(wins) / Decimal(matches) * Decimal(100)).quantize(
+            Decimal('0.01'),
+            rounding=ROUND_HALF_UP
+        ) if matches else Decimal('0.00')
+
+        # KDA = (kills + assists) / deaths (jeśli deaths == 0, dzielimy przez 1, by nie dzielić przez zero)
+        denom = Decimal(total_deaths) if total_deaths else Decimal(1)
+        kda_val = (Decimal(total_kills + vals['assists']) / denom).quantize(
+            Decimal('0.01'),
+            rounding=ROUND_HALF_UP
+        )
+
+        objects_to_create.append(
+            SummonerChampion(
+                summoner=summoner,
+                champion_id=champ_id,
+                matches_num=matches,
+                winratio=winratio_val,
+                kda=kda_val
+            )
+        )
+
+    # 5) Masowe wstawienie
+    if objects_to_create:
+        SummonerChampion.objects.bulk_create(objects_to_create)

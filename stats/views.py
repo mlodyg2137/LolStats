@@ -4,9 +4,9 @@ from django.http import Http404, HttpResponseRedirect
 from django.conf import settings
 from django.core.paginator import Paginator
 from django.urls import reverse
-from .models import (Summoner, Participant, Champion, Queue, Match)
+from .models import (Summoner, Participant, Champion, Queue, Match, SummonerChampion)
 from .utils import (RateLimitException, get_summoner_by_name_and_tag, get_summoner_server)
-from .services import (save_recent_matches_for_summoner, save_champions, save_queues, save_summoner_rank_info, recalculate_summoner_advanced_stats)
+from .services import (save_recent_matches_for_summoner, save_champions, save_queues, save_summoner_rank_info, recalculate_summoner_advanced_stats, recalculate_summoner_champions)
 
 
 def home(request):
@@ -79,16 +79,18 @@ def summoner_detail(request, gameName, tagLine):
 
             save_recent_matches_for_summoner(summ, force_get_data=True)
             recalculate_summoner_advanced_stats(summ)
+            recalculate_summoner_champions(summ)
 
             url = reverse('summoner_detail', args=[summ.gameName, summ.tagLine])
             return HttpResponseRedirect(f"{url}?region={region}")
 
         if not Participant.objects.filter(summoner=summ).exists():
-            print("NIE ISTNIEJE ZADEN PARTICIPANT")
             save_recent_matches_for_summoner(summ)
             recalculate_summoner_advanced_stats(summ)
+            recalculate_summoner_champions(summ)
         else:
             recalculate_summoner_advanced_stats(summ)
+            recalculate_summoner_champions(summ)
     except Http404 as e:
         messages.error(request, "Nie ma takiego gracza na serwerze Riot API.")
         return redirect('home')
@@ -100,6 +102,10 @@ def summoner_detail(request, gameName, tagLine):
     except Exception as e:
         messages.error(request, f"Błąd: {e}")
         return redirect('home')
+    
+    top_champs = SummonerChampion.objects.filter(summoner=summ) \
+                                         .select_related('champion') \
+                                         .order_by('-matches_num')[:5]
 
     participants = Participant.objects.filter(summoner=summ).select_related('match').order_by('-match__timestamp')
 
@@ -116,6 +122,7 @@ def summoner_detail(request, gameName, tagLine):
 
     context = {
         'summoner': summ,
+        'top_champs': top_champs,
         'participants': participants,
         'paginator': paginator,
         'page_obj': page_obj,

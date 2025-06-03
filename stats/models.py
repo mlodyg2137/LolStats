@@ -72,8 +72,8 @@ class SummonerChampion(models.Model):
     summoner = models.ForeignKey(Summoner, on_delete=models.CASCADE)
     champion = models.ForeignKey(Champion, on_delete=models.CASCADE)
     matches_num = models.PositiveIntegerField()
-    winratio = models.DecimalField(max_digits=3, decimal_places=2, null=True)
-    kda = models.DecimalField(max_digits=4, decimal_places=2, null=True)
+    winratio = models.DecimalField(max_digits=5, decimal_places=2, null=True)
+    kda = models.DecimalField(max_digits=6, decimal_places=2, null=True)
 
     def __str__(self):
         return f"{self.champion.name} ({self.summoner.gameName}#{self.summoner.tagLine})"
