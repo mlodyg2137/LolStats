@@ -61,6 +61,10 @@ Aplikacja umożliwia:
    python manage.py migrate
    ```
 
+5. **(Opcjonalnie) wczytaj przykładowe dane, aby już mieć w bazie graczy pare rekordów**
+   ```bash
+   python manage.py loaddata initial_data.json
+   ```
 ---
 
 ## Konfiguracja

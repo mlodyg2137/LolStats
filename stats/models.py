@@ -66,6 +66,32 @@ class Summoner(models.Model):
     @property
     def flex_winratio(self):
         return f"{(self.flex_wins / self.flex_matches_num)*100:.1f}%" if self.flex_matches_num > 0 else "0.0%"
+    
+    @property
+    def rank_solo_formatted(self):
+        if self.rank_solo is None:
+            return None
+        rank_type, rank_num = self.rank_solo.split()
+        if rank_type == "CHALLENGER":
+            return "Challenger"
+        return f"{rank_type[0].upper()}{rank_type[1:].lower()} {rank_num}"
+    
+    @property
+    def rank_flex_formatted(self):
+        if self.rank_flex is None:
+            return None
+        rank_type, rank_num = self.rank_flex.split()
+        if rank_type == "CHALLENGER":
+            return "Challenger"
+        return f"{rank_type[0].upper()}{rank_type[1:].lower()} {rank_num}"
+    
+    @property
+    def solo_main_role_formatted(self):
+        return f"{self.solo_main_role.capitalize()}" if self.solo_main_role else "Brak"
+    
+    @property
+    def flex_main_role_formatted(self):
+        return f"{self.flex_main_role.capitalize()}" if self.flex_main_role else "Brak"
 
 
 class SummonerChampion(models.Model):

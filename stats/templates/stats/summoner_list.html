@@ -13,6 +13,7 @@
       <tr>
         <th scope="col">Imię i Tag</th>
         <th scope="col">Region</th>
+        <th scope="col">Ranga SoloQ</th>
         <th scope="col">Data dodania</th>
       </tr>
     </thead>
@@ -20,11 +21,18 @@
       {% for s in page_obj.object_list %}
       <tr>
         <td>
+          {% if s.icon %}
+          <img src="{{ s.icon }}" alt="Ikona Summonera" class="rounded-circle me-3" width="32" height="32">
+          {% else %}
+          <img src="{% static 'stats/default_icon.png' %}" alt="Domyślna ikona"
+               class="rounded-circle me-3" width="32" height="32">
+          {% endif %}
           <a href="{% url 'summoner_detail' s.gameName s.tagLine %}?region={{ s.region }}">
             {{ s.gameName }}#{{ s.tagLine }}
           </a>
         </td>
-        <td>{{ s.region }}</td>
+        <td>{{ s.region|title }}</td>
+        <td>{{ s.rank_solo_formatted|default:"Brak rangi" }}</td>
         <td>{{ s.date_added|date:"Y-m-d H:i" }}</td>
       </tr>
       {% endfor %}

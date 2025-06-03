@@ -39,21 +39,21 @@
           <p class="mb-0">
             <strong>Poziom:</strong> {{ summoner.summoner_level }}
             &nbsp;&nbsp;|&nbsp;&nbsp;
-            <strong>Region:</strong> {{ summoner.region|upper }}
+            <strong>Region:</strong> {{ summoner.region|capfirst }}
             &nbsp;&nbsp;|&nbsp;&nbsp;
             <strong>Dodany:</strong> {{ summoner.date_added|date:"Y-m-d" }}
           </p>
           <p class="mb-0">
             <strong>Ranga SoloQ:</strong>
             {% if summoner.rank_solo %}
-              {{ summoner.rank_solo }} ({{ summoner.solo_wins }}W/{{ summoner.solo_loses }}L)
+              {{ summoner.rank_solo_formatted }} ({{ summoner.solo_wins }}W/{{ summoner.solo_loses }}L)
             {% else %}
               <span class="text-muted">brak danych</span>
             {% endif %}
             &nbsp;&nbsp;|&nbsp;&nbsp;
             <strong>Ranga FlexQ:</strong>
             {% if summoner.rank_flex %}
-              {{ summoner.rank_flex }} ({{ summoner.flex_wins }}W/{{ summoner.flex_loses }}L)
+              {{ summoner.rank_flex_formatted }} ({{ summoner.flex_wins }}W/{{ summoner.flex_loses }}L)
             {% else %}
               <span class="text-muted">brak danych</span>
             {% endif %}
@@ -74,7 +74,7 @@
       <div class="card-body">
         <p class="mb-2"><strong>Winratio:</strong> {{ summoner.solo_winratio }}</p>
         <p class="mb-2"><strong>KDA:</strong> {{ summoner.solo_kda|default:"0.00" }}</p>
-        <p class="mb-2"><strong>Główna rola:</strong> {{ summoner.solo_main_role|default:"–" }}</p>
+        <p class="mb-2"><strong>Główna rola:</strong> {{ summoner.solo_main_role_formatted|default:"–" }}</p>
         <p class="mb-2"><strong>Vision avg:</strong> {{ summoner.solo_vision_avg|floatformat:1|default:"0" }}</p>
         <p class="mb-2"><strong>Gold/min:</strong> {{ summoner.solo_gold_per_min|default:"0" }}</p>
         <p class="mb-0"><strong>Miniony/min:</strong> {{ summoner.solo_minions_per_min|floatformat:2|default:"0.00" }}</p>
@@ -90,7 +90,7 @@
       <div class="card-body">
         <p class="mb-2"><strong>Winratio FlexQ:</strong> {{ summoner.flex_winratio }}</p>
         <p class="mb-2"><strong>KDA:</strong> {{ summoner.flex_kda|default:"0.00" }}</p>
-        <p class="mb-2"><strong>Główna rola:</strong> {{ summoner.flex_main_role|default:"–" }}</p>
+        <p class="mb-2"><strong>Główna rola:</strong> {{ summoner.flex_main_role_formatted|default:"–" }}</p>
         <p class="mb-2"><strong>Vision avg:</strong> {{ summoner.flex_vision_avg|floatformat:1|default:"0" }}</p>
         <p class="mb-2"><strong>Gold/min:</strong> {{ summoner.flex_gold_per_min|default:"0" }}</p>
         <p class="mb-0"><strong>Miniony/min:</strong> {{ summoner.flex_minions_per_min|floatformat:2|default:"0.00" }}</p>
