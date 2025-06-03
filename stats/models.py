@@ -53,19 +53,19 @@ class Summoner(models.Model):
     
     @property
     def solo_matches_num(self):
-        return self.solo_wins + self.solo_loses
+        return (self.solo_wins or 0) + (self.solo_loses or 0)
 
     @property
     def solo_winratio(self):
-        return f"{(self.solo_wins / self.solo_matches_num)*100:.1f}%"
+        return f"{(self.solo_wins / self.solo_matches_num)*100:.1f}%" if self.solo_matches_num > 0 else "0.0%"
     
     @property
     def flex_matches_num(self):
-        return self.flex_wins + self.flex_loses
+        return (self.flex_wins or 0) + (self.flex_loses or 0)
     
     @property
     def flex_winratio(self):
-        return f"{(self.flex_wins / self.flex_matches_num)*100:.1f}%"
+        return f"{(self.flex_wins / self.flex_matches_num)*100:.1f}%" if self.flex_matches_num > 0 else "0.0%"
 
 
 class SummonerChampion(models.Model):

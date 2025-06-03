@@ -1,9 +1,10 @@
 # stats/services.py
 
 from .models import (Match, Participant, Summoner, Champion, Queue)
-from .utils import (get_match_ids_by_puuid, get_match_by_id, get_champions, get_queues, get_summoner_info_by_puuid, get_queues_info_by_summoner_id)
+from .utils import (get_match_ids_by_puuid, get_match_by_id, get_champions, get_queues, get_summoner_info_by_puuid, get_queues_info_by_summoner_id, RateLimitException)
 from django.utils import timezone
 from datetime import datetime
+
 
 MATCHES_LIMIT = 60
 GAME_MODE_TO_NAME = {
@@ -11,35 +12,38 @@ GAME_MODE_TO_NAME = {
     "5v5 Ranked Flex games": "Flex",
     "5v5 Blind Pick games": "Blind Pick",
     "5v5 ARAM games": "ARAM",
+    "SWIFTPLAY": "Swiftplay",
 }
 
 
 def save_champions():
-    champions = get_champions()
-    if champions:
-        for champ, data in champions.get('data').items():
-            champ_obj, created = Champion.objects.get_or_create(
-                key=data.get('key'),
-                name=data.get('name'),
-                icon=f"https://ddragon.leagueoflegends.com/cdn/15.11.1/img/champion/{data.get('image').get('full')}",
-            )
-    else:
-        print("Champions API nic nie zwróciło.")
+    try:
+        champions = get_champions()
+        if champions:
+            for champ, data in champions.get('data').items():
+                champ_obj, created = Champion.objects.get_or_create(
+                    key=data.get('key'),
+                    name=data.get('name'),
+                    icon=f"https://ddragon.leagueoflegends.com/cdn/15.11.1/img/champion/{data.get('image').get('full')}",
+                )
+    except Exception as e:
+        print(e)
 
 
 def save_queues():
-    queues = get_queues()
-    if queues:
-        for data in queues:
-            que_obj, created = Queue.objects.get_or_create(
-                queue_id = data.get('queueId'),
-                description = data.get('description'),
-            )
-    else:
-        print("Queue API nic nie zwróciło.")
+    try:
+        queues = get_queues()
+        if queues:
+            for data in queues:
+                que_obj, created = Queue.objects.get_or_create(
+                    queue_id = data.get('queueId'),
+                    description = data.get('description'),
+                )
+    except Exception as e:
+        print(e)
 
 
-def save_recent_matches_for_summoner(summ: Summoner) -> None:
+def save_recent_matches_for_summoner(summ: Summoner, force_get_data: bool = False) -> None:
     """
     Pobierz w pętlach kolejne porcje ID meczów od Riot API 
     (parametry: start=0,100,200…; count=100) aż API przestanie zwracać nowe.
@@ -55,7 +59,7 @@ def save_recent_matches_for_summoner(summ: Summoner) -> None:
             break
         for match_id in match_ids_chunk:
             match_obj, created = Match.objects.get_or_create(match_id=match_id, defaults={'game_duration': 0, 'timestamp': timezone.now()})
-            if created:
+            if created or force_get_data:
                 # Tylko jeżeli created=True, będziemy pobierać szczegóły z API
                 match_data = get_match_by_id(match_id, region)
                 if not match_data:
@@ -64,9 +68,8 @@ def save_recent_matches_for_summoner(summ: Summoner) -> None:
 
                 info = match_data.get('info', {})
 
-                # 1) Utwórz/pobierz właściwą kolejkę (Queue)
+                # pobranie kolejki queue
                 queue_type = info.get('queueType')  # np. "RANKED_SOLO_5x5" lub "RANKED_FLEX_SR"
-                # Możesz też filtrować po queueId: queue_id = info.get('queueId')
                 queue_obj, _ = Queue.objects.get_or_create(
                     queue_id=info.get('queueId'),
                     defaults={'description': queue_type}
@@ -78,6 +81,8 @@ def save_recent_matches_for_summoner(summ: Summoner) -> None:
                 game_duration = info.get('gameDuration', 0)
                 game_start_timestamp = info.get('gameStartTimestamp', None)
                 game_name = GAME_MODE_TO_NAME[queue_obj.description] if queue_obj.description in GAME_MODE_TO_NAME else queue_obj.description if queue_obj.description else game_mode
+                if len(game_name)<=1 and queue_obj.queue_id == 480:
+                    game_name="Quickplay"
                 team_stats = dict()
 
                 match_obj.game_mode = game_mode
@@ -87,7 +92,7 @@ def save_recent_matches_for_summoner(summ: Summoner) -> None:
                 # Timestamp w API to liczba ms od 1.1.1970
                 ts_ms = game_start_timestamp
                 if ts_ms:
-                    match_obj.timestamp = datetime.fromtimestamp(ts_ms / 1000.0)
+                    match_obj.timestamp = timezone.make_aware(datetime.fromtimestamp(ts_ms/1000.0))
                 else:
                     match_obj.timestamp = timezone.now()
                 
@@ -138,7 +143,7 @@ def save_recent_matches_for_summoner(summ: Summoner) -> None:
                 triple_k        = p.get('tripleKills', 0)
                 quadra_k        = p.get('quadraKills', 0)
                 penta_k         = p.get('pentaKills', 0)
-                kp              = k / team_stats[team_id]['kills']
+                kp              = (k / team_stats[team_id]['kills']) if team_stats[team_id]['kills'] > 0 else 0
 
                 try:
                     summ_part = Summoner.objects.get(puuid=puuid_p)
@@ -225,12 +230,12 @@ def recalculate_summoner_advanced_stats(summ: Summoner):
 
     # --- 3) kda (podzielić przez zero → zabezpieczenie)
     if solo_agg['matches_count'] and solo_agg['total_deaths']:
-        solo_kda = (solo_agg['total_kills'] + solo_agg['total_assists']) / solo_agg['total_deaths']
+        solo_kda = ((solo_agg['total_kills'] + solo_agg['total_assists']) / solo_agg['total_deaths']) if solo_agg['total_deaths'] > 0 else 0
     else:
         solo_kda = 0.0
 
     if flex_agg['matches_count'] and flex_agg['total_deaths']:
-        flex_kda = (flex_agg['total_kills'] + flex_agg['total_assists']) / flex_agg['total_deaths']
+        flex_kda = ((flex_agg['total_kills'] + flex_agg['total_assists']) / flex_agg['total_deaths']) if flex_agg['total_deaths'] > 0 else 0 
     else:
         flex_kda = 0.0
 
@@ -254,15 +259,15 @@ def recalculate_summoner_advanced_stats(summ: Summoner):
 
     # gold_per_min i minions_per_min:
     if solo_total_duration_secs:
-        solo_gpm = solo_agg['total_gold'] / (solo_total_duration_secs / 60)
-        solo_mpm = solo_agg['total_farm'] / (solo_total_duration_secs / 60)
+        solo_gpm = (solo_agg['total_gold'] / (solo_total_duration_secs / 60)) if solo_total_duration_secs > 0 else 0
+        solo_mpm = (solo_agg['total_farm'] / (solo_total_duration_secs / 60)) if solo_total_duration_secs > 0 else 0
     else:
         solo_gpm = 0
         solo_mpm = 0
 
     if flex_total_duration_secs:
-        flex_gpm = flex_agg['total_gold'] / (flex_total_duration_secs / 60)
-        flex_mpm = flex_agg['total_farm'] / (flex_total_duration_secs / 60)
+        flex_gpm = (flex_agg['total_gold'] / (flex_total_duration_secs / 60)) if flex_total_duration_secs > 0 else 0
+        flex_mpm = (flex_agg['total_farm'] / (flex_total_duration_secs / 60)) if flex_total_duration_secs > 0 else 0
     else:
         flex_gpm = 0
         flex_mpm = 0

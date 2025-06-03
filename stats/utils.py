@@ -4,6 +4,12 @@ import requests
 from django.conf import settings
 from django.http import Http404
 
+
+class RateLimitException(Exception):
+    """Wyjątek sygnalizujący przekroczony limit zapytań do Riot API."""
+    pass
+
+
 HEADERS = { 
     "Origin": "https://developer.riotgames.com",
     "X-Riot-Token": settings.RIOT_API_KEY,
@@ -16,11 +22,11 @@ def get_summoner_by_name_and_tag(gameName: str, tagLine: str, region: str = 'eur
         case 200:
             return response.json()
         case 404:
-            raise Http404("Nie ma takiego gracza na serwerze Riot API o podanym gameName oraz tagLine.")
+            raise Http404(f"Nie znaleziono summonera w bazie Riot API: {gameName}#{tagLine}")
         case 429:
-            raise Http404("Przekroczono limit zapytań. spróbuj za kilka minut.")
+            raise RateLimitException("Przekroczono limit zapytań do Riot API.")
         case _:
-            raise Http404(f"Nieoczekiwany błąd Riot API: {response.status_code}")
+            raise Exception(f"Nieoczekiwany błąd Riot API: {response.status_code}")
     
 def get_summoner_server(puuid: str) -> str | None:
     base_url = f'https://europe.api.riotgames.com/riot/account/v1/region/by-game/lol/by-puuid/{puuid}'
@@ -29,9 +35,9 @@ def get_summoner_server(puuid: str) -> str | None:
         case 200:
             return response.json().get('region')
         case 404:
-            raise Http404("Nie ma takiego gracza na serwerze Riot API o podanym puuid.")
+            raise Http404(f"Nie ma takiego gracza na serwerze Riot API o puuid {puuid}.")
         case 429:
-            raise Http404("Przekroczono limit zapytań. spróbuj za kilka minut.")
+            raise RateLimitException("Przekroczono limit zapytań do Riot API.")
         case _:
             raise Http404(f"Nieoczekiwany błąd Riot API: {response.status_code}")
 
@@ -50,10 +56,9 @@ def get_match_ids_by_puuid(puuid: str, region: str, count: int = 100, start: int
         case 200:
             return response.json()
         case 404:
-            return []
-            # raise Http404("Nie ma meczy na serwerze Riot API dla gracza o podanym puuid.")
+            raise Http404(f"Nie ma meczy na serwerze Riot API dla gracza o puuid {puuid}.")
         case 429:
-            raise Http404("Przekroczono limit zapytań. spróbuj za kilka minut.")
+            raise RateLimitException("Przekroczono limit zapytań. spróbuj za kilka minut.")
         case _:
             raise Http404(f"Nieoczekiwany błąd Riot API: {response.status_code}")
 
@@ -74,9 +79,9 @@ def get_match_by_id(match_id: str, region: str) -> dict | None:
         case 404:
             raise Http404("Nie ma takiego meczu na serwerze Riot API.")
         case 429:
-            raise Http404("Przekroczono limit zapytań. spróbuj za kilka minut.")
+            raise RateLimitException("Przekroczono limit zapytań. spróbuj za kilka minut.")
         case _:
-            raise Http404(f"Nieoczekiwany błąd Riot API: {response.status_code}")
+            raise Exception(f"Nieoczekiwany błąd Riot API: {response.status_code}")
 
 
 def get_summoner_info_by_puuid(puuid: str, server: str) -> dict | None:
@@ -86,11 +91,11 @@ def get_summoner_info_by_puuid(puuid: str, server: str) -> dict | None:
         case 200:
             return response.json()
         case 404:
-            raise Http404("Nie ma takiego summonera na serwerze Riot API.")
+            raise Http404(f"Nie ma takiego gracza na serwerze Riot API o puuid {puuid}.")
         case 429:
-            raise Http404("Przekroczono limit zapytań. spróbuj za kilka minut.")
+            raise RateLimitException("Przekroczono limit zapytań. spróbuj za kilka minut.")
         case _:
-            raise Http404(f"Nieoczekiwany błąd Riot API: {response.status_code}")
+            raise Exception(f"Nieoczekiwany błąd Riot API: {response.status_code}")
 
 
 def get_queues_info_by_summoner_id(summoner_id: str, server: str) -> dict | None:
@@ -100,11 +105,11 @@ def get_queues_info_by_summoner_id(summoner_id: str, server: str) -> dict | None
         case 200:
             return response.json()
         case 404:
-            raise Http404("Nie ma takiego summonera na serwerze Riot API.")
+            raise Http404(f"Nie ma takiego gracza na serwerze Riot API o summoner_id {summoner_id}.")
         case 429:
-            raise Http404("Przekroczono limit zapytań. spróbuj za kilka minut.")
+            raise RateLimitException("Przekroczono limit zapytań. spróbuj za kilka minut.")
         case _:
-            raise Http404(f"Nieoczekiwany błąd Riot API: {response.status_code}")
+            raise Exception(f"Nieoczekiwany błąd Riot API: {response.status_code}")
 
 
 def get_queues():
@@ -118,14 +123,9 @@ def get_queues():
             print("Uzyskano kolejki z API.")
             return response.json()
         case 404:
-            print("Nie ma żadnych kolejek.")
-            return None
-        case 429:
-            print("Przekroczono limit zapytań. spróbuj za kilka minut.")
-            return None
+            raise Exception("Pusty wynik żądania do Riot API Queues")
         case _:
-            print(f"Nieoczekiwany błąd Riot API: {response.status_code}")
-            return None
+            raise Exception(f"Nieoczekiwany błąd Riot API: {response.status_code}")
 
 
 def get_champions():
@@ -139,11 +139,6 @@ def get_champions():
             print("Uzyskano bohaterów z API.")
             return response.json()
         case 404:
-            print("Nie ma żadnych bohaterów.")
-            return None
-        case 429:
-            print("Przekroczono limit zapytań. spróbuj za kilka minut.")
-            return None
+            raise Exception("Pusty wynik żądania do Riot API Champions")
         case _:
-            print(f"Nieoczekiwany błąd Riot API: {response.status_code}")
-            return None
+            raise Exception(f"Nieoczekiwany błąd Riot API: {response.status_code}")

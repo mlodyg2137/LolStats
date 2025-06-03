@@ -1,10 +1,11 @@
 from django.shortcuts import render, redirect
+from django.contrib import messages
 from django.http import Http404, HttpResponseRedirect
 from django.conf import settings
 from django.core.paginator import Paginator
 from django.urls import reverse
-from .models import (Summoner, Participant, Champion, Queue)
-from .utils import (get_summoner_by_name_and_tag, get_summoner_server)
+from .models import (Summoner, Participant, Champion, Queue, Match)
+from .utils import (RateLimitException, get_summoner_by_name_and_tag, get_summoner_server)
 from .services import (save_recent_matches_for_summoner, save_champions, save_queues, save_summoner_rank_info, recalculate_summoner_advanced_stats)
 
 
@@ -49,9 +50,10 @@ def summoner_detail(request, gameName, tagLine):
             summ = Summoner.objects.get(gameName__iexact=gameName, tagLine__iexact=tagLine)
             region = summ.region
         except Summoner.DoesNotExist:
-            data = get_summoner_by_name_and_tag(gameName, tagLine, region)
-            if data:
-                if server := get_summoner_server(data['puuid']):
+            try:
+                data = get_summoner_by_name_and_tag(gameName, tagLine, region)
+                if data:
+                    server = get_summoner_server(data['puuid'])
                     summ = Summoner.objects.create(
                         puuid=data['puuid'],
                         gameName=data['gameName'],
@@ -60,23 +62,44 @@ def summoner_detail(request, gameName, tagLine):
                         server=server,
                     )
                     save_summoner_rank_info(summ)
-                else:
-                    raise Http404("Problem z uzyskaniem serwera gracza.")    
-            else:
-                raise Http404("Nie ma takiego gracza na serwerze Riot API.")
+                    
+            except Http404 as e:
+                messages.error(request, "Nie ma takiego gracza na serwerze Riot API.")
+                return redirect('home')
+            except RateLimitException as e:
+                messages.error(request, "Przekroczono limit zapytań do Riot API.")
+                return redirect('home')
+            except Exception as e:
+                messages.error(request, f"Błąd: {e}")
+                return redirect('home')
     
-    if request.method == 'POST' and request.POST.get('update') == '1':
-        save_recent_matches_for_summoner(summ)
-        recalculate_summoner_advanced_stats(summ)
+    try:
+        if request.method == 'POST' and request.POST.get('update') == '1':
+            Participant.objects.filter(summoner=summ).delete()
 
-        url = reverse('summoner_detail', args=[summ.gameName, summ.tagLine])
-        return HttpResponseRedirect(f"{url}?region={region}")
+            save_recent_matches_for_summoner(summ, force_get_data=True)
+            recalculate_summoner_advanced_stats(summ)
 
-    if not Participant.objects.filter(summoner=summ).exists():
-        save_recent_matches_for_summoner(summ)
-        recalculate_summoner_advanced_stats(summ)
-    else:
-        recalculate_summoner_advanced_stats(summ)
+            url = reverse('summoner_detail', args=[summ.gameName, summ.tagLine])
+            return HttpResponseRedirect(f"{url}?region={region}")
+
+        if not Participant.objects.filter(summoner=summ).exists():
+            print("NIE ISTNIEJE ZADEN PARTICIPANT")
+            save_recent_matches_for_summoner(summ)
+            recalculate_summoner_advanced_stats(summ)
+        else:
+            recalculate_summoner_advanced_stats(summ)
+    except Http404 as e:
+        messages.error(request, "Nie ma takiego gracza na serwerze Riot API.")
+        return redirect('home')
+    
+    except RateLimitException as e:
+        messages.error(request, "Przekroczono limit zapytań do Riot API.")
+        return redirect('home')
+    
+    except Exception as e:
+        messages.error(request, f"Błąd: {e}")
+        return redirect('home')
 
     participants = Participant.objects.filter(summoner=summ).select_related('match').order_by('-match__timestamp')
 
@@ -107,7 +130,7 @@ def summoner_list(request):
     Wyświetla paginowaną listę wszystkich Summonerów w bazie.
     """
     all_summoners = Summoner.objects.all().order_by('gameName', 'tagLine')
-    paginator = Paginator(all_summoners, 30)  # po 30 summonerów na stronę
+    paginator = Paginator(all_summoners, 30)
 
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)

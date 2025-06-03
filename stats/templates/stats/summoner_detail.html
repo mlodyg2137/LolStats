@@ -5,8 +5,24 @@
 {% block title %}{{ summoner.gameName }}#{{ summoner.tagLine }} – Profil{% endblock %}
 
 {% block content %}
+<!-- 1) Overlay z spinnerem dla “Aktualizuj” -->
+<div id="loading-overlay" style="
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(255, 255, 255, 0.8);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+    ">
+  <div class="spinner-border text-primary" role="status" style="width: 4rem; height: 4rem;">
+    <span class="visually-hidden">Ładowanie...</span>
+  </div>
+  <p class="mt-3">Aktualizuję historię meczów i statystyki…</p>
+</div>
+
 <div class="row">
-  <!-- Panel Profilu (jak wcześniej) -->
+  <!-- 2) Panel Profilu Summonera -->
   <div class="col-12 mb-4">
     <div class="card shadow-sm">
       <div class="card-body d-flex align-items-center">
@@ -48,14 +64,15 @@
   </div>
 </div>
 
+<!-- 3) Panele Statystyk SoloQ / FlexQ -->
 <div class="row">
-  <!-- Panel Statystyk SoloQ / FlexQ (jak wcześniej) -->
   <div class="col-md-6 mb-4">
     <div class="card h-100 shadow-sm">
       <div class="card-header bg-primary text-white">
         Statystyki SoloQ
       </div>
       <div class="card-body">
+        <p class="mb-2"><strong>Winratio:</strong> {{ summoner.solo_winratio }}</p>
         <p class="mb-2"><strong>KDA:</strong> {{ summoner.solo_kda|default:"0.00" }}</p>
         <p class="mb-2"><strong>Główna rola:</strong> {{ summoner.solo_main_role|default:"–" }}</p>
         <p class="mb-2"><strong>Vision avg:</strong> {{ summoner.solo_vision_avg|floatformat:1|default:"0" }}</p>
@@ -71,6 +88,7 @@
         Statystyki FlexQ
       </div>
       <div class="card-body">
+        <p class="mb-2"><strong>Winratio FlexQ:</strong> {{ summoner.flex_winratio }}</p>
         <p class="mb-2"><strong>KDA:</strong> {{ summoner.flex_kda|default:"0.00" }}</p>
         <p class="mb-2"><strong>Główna rola:</strong> {{ summoner.flex_main_role|default:"–" }}</p>
         <p class="mb-2"><strong>Vision avg:</strong> {{ summoner.flex_vision_avg|floatformat:1|default:"0" }}</p>
@@ -81,10 +99,20 @@
   </div>
 </div>
 
+  <!-- 4) Komunikaty błędów/sukcesu z Django messages -->
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags|default:"danger" }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Zamknij"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+
 <div class="row mb-3">
   <!-- Przycisk „Aktualizuj” -->
   <div class="col-12 text-end">
-    <form method="post">
+    <form id="update-form" method="post">
       {% csrf_token %}
       <!-- hidden input żeby pokazać, że to jest „update” -->
       <input type="hidden" name="update" value="1">
@@ -175,4 +203,16 @@
     </div>
   </div>
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const updateForm = document.getElementById('update-form');
+    const overlay = document.getElementById('loading-overlay');
+    if (updateForm) {
+      updateForm.addEventListener('submit', function() {
+        overlay.style.display = 'flex';
+      });
+    }
+  });
+</script>
 {% endblock %}
